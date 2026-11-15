@@ -1,10 +1,6 @@
 /**
- * 图片下载。
- *
- * 关键：必须用接口给的 big_cdn_src，它带 ?tbpicau=<签名> 时效参数。
- * 拿文件名硬拼 https://tiebapic.baidu.com/forum/pic/item/<name>.jpg
- * 只会返回 4262 字节、238×238 的防盗链占位图 —— 四个不同 URL 的 MD5 一模一样，
- * 加 BDUSS、加 Referer 都救不回来。
+ * 图片下载。URL 必须取自接口的 big_cdn_src（含 ?tbpicau= 签名），
+ * 自行拼接文件名只能取到防盗链占位图。
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -24,7 +20,6 @@ function curlTo(url, outPath, referer) {
   })
 }
 
-/** 从一个帖子 JSON 里收集所有图片 URL（去重，只留带签名的那个） */
 export function collectImageUrls(thread) {
   const out = []
   const push = (urls, floor, kind, idx) => {
@@ -40,10 +35,6 @@ export function collectImageUrls(thread) {
   return out
 }
 
-/**
- * 下载一个帖子的全部图片到 outDir。
- * @returns {Promise<Array<{url:string, file:string, bytes:number, ok:boolean}>>}
- */
 export async function downloadThreadImages(thread, outDir, { referer } = {}) {
   fs.mkdirSync(outDir, { recursive: true })
   const list = collectImageUrls(thread)
@@ -59,7 +50,7 @@ export async function downloadThreadImages(thread, outDir, { referer } = {}) {
     try {
       await curlTo(item.url, file, referer)
       const bytes = fs.existsSync(file) ? fs.statSync(file).size : 0
-      results.push({ url: item.url, file, bytes, ok: bytes > 5000 }) // 5KB 以下基本是占位图
+      results.push({ url: item.url, file, bytes, ok: bytes > 5000 })
     } catch (e) {
       results.push({ url: item.url, file, bytes: 0, ok: false, error: String(e.message || e) })
     }
@@ -67,10 +58,7 @@ export async function downloadThreadImages(thread, outDir, { referer } = {}) {
   return results
 }
 
-/**
- * 自检：同一批图里如果多个文件 MD5 相同、且都是一千多字节的方图，
- * 说明拿到了防盗链占位图，签名 URL 已经过期，需要重新抓接口。
- */
+// 多张图 MD5 相同说明取到的是占位图，签名 URL 已过期
 export function detectPlaceholders(files) {
   const seen = new Map()
   const dup = []

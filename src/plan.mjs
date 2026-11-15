@@ -1,23 +1,12 @@
 /**
- * 生成补档计划：把源帖拆成「按顺序要发的东西」。
- *
- * 结构是两层，跟原帖一致：
- *   父楼层  → 发成主楼层，占楼层号
- *   楼中楼  → 发成该父楼层下的楼中楼，不占楼层号
- *
- * 每条都带角标【N 楼 · 昵称 · 时间】，读的人能对上原帖。
+ * 生成补档计划。父楼层发为主楼层，楼中楼挂在父楼层下。
  */
 
-/** 补档时不能真的 @ 出去：半角 @ 换全角 ＠，视觉几乎一致，贴吧不会解析成提及段 */
+// 半角 @ 转全角 ＠，不触发真实提及
 export function neutralizeMentions(text) {
   return String(text || '').replace(/@(?=[^\s@:：])/g, '＠')
 }
 
-/**
- * @param {object} thread fetchThread 的结果
- * @param {{sourceUrl?:string, sourceForum?:string}} opts
- * @returns {{parent: Array, all: Array}}
- */
 export function buildPlan(thread, opts = {}) {
   const parent = []
   const all = []

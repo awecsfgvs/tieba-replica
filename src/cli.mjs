@@ -2,16 +2,13 @@
 /**
  * 命令行入口。
  *
- *   node src/cli.mjs fetch <tid>              抓帖，落盘 JSON + Markdown
- *   node src/cli.mjs plan <tid>               生成补档计划
- *   node src/cli.mjs images <tid>             下载原帖图片
- *   node src/cli.mjs post --title <标题> --body-file <文件> --forum <吧名>
- *                                             发主帖
- *   node src/cli.mjs reply <tid> --text <内容>  发一条楼层回复
- *   node src/cli.mjs nested <tid> --pid <楼层pid> --text <内容>
- *                                             发楼中楼
- *   node src/cli.mjs run --tid <新帖tid> --source <源帖tid> [--gap 20]
- *                                             按计划跑整套补档（断点续传）
+ *   fetch <tid>                                   抓帖
+ *   plan <tid> --forum <吧名>                      生成计划
+ *   images <tid>                                  下载图片
+ *   post --forum <吧名> --title <标题> --body-file <文件>
+ *   reply <tid> --text <内容>
+ *   nested <tid> --pid <pid> --text <内容>
+ *   run --tid <新帖tid> --source <源帖tid> [--gap 20]
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -36,7 +33,6 @@ for (let i = 1; i < argv.length; i++) {
 const OUT = path.resolve(process.env.TIEBA_OUT_DIR || './out')
 const PORT = Number(process.env.TIEBA_CDP_PORT || 9350)
 
-/** BDUSS 优先取环境变量，其次读本地文件（不进仓库） */
 function getBduss() {
   if (process.env.TIEBA_BDUSS) return process.env.TIEBA_BDUSS.trim()
   const candidates = [
@@ -127,7 +123,7 @@ async function main() {
 
       const cdp = await connect(PORT)
       const prog = loadProgress(progressFile)
-      // 先把目标帖已有的父楼层 pid 补齐，避免重跑时楼中楼找不到爹
+      // 先补已有父楼层的 pid，保证重跑时楼中楼能定位
       prog.pidByKey = { ...(prog.pidByKey || {}), ...(await mapFloorPids({ bduss, tid: newTid })) }
       saveProgress(progressFile, prog)
 

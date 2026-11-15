@@ -1,10 +1,6 @@
 /**
- * 抓帖：把源帖抓成结构化 JSON（楼层 + 楼中楼 + 图片 URL + 清洗后的文本）。
- *
- * 清洗规则（不洗会出乱码 / 重复前缀）：
- *   ① image_emoticonN 换成 [中文名]，直接发原文会显示成字母串
- *   ② 去掉楼中楼自带的「回复 某人 :」前缀，否则搬过去变「回复 回复 某人 :」
- *   ③ 图片只留 big_cdn_src（带 tbpicau 签名），硬拼文件名只能拿到防盗链占位图
+ * 抓帖，输出结构化 JSON 与 Markdown。
+ * 文本清洗：表情代码还原为 [中文名]，去掉楼中楼自带的回复前缀。
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -16,25 +12,17 @@ import {
   fmtTime,
 } from './api.mjs'
 
-/** 表情代码 → 中文名。接口给的是 image_emoticon9，正文里要写成 [泪] 这类。 */
 export function normalizeEmoji(text) {
-  // 接口 content 里 type:2 已经带中文名，这里兜底处理漏网的裸代码
   return String(text || '')
     .replace(/image_emoticon(\d+)/g, '')
     .replace(/[ \t]{2,}/g, ' ')
     .trim()
 }
 
-/** 去掉「回复 197******05 :」这种系统前缀 */
 export function stripReplyPrefix(text) {
   return String(text || '').replace(/^回复\s+\S+\s*[:：]\s*/, '').trim()
 }
 
-/**
- * 抓一个帖子。
- * @param {{bduss:string, tid:string, fetchSubs?:boolean}} opts
- * @returns {Promise<object>} 结构化结果，可直接落盘成 JSON
- */
 export async function fetchThread({ bduss, tid, fetchSubs = true }) {
   const { title, replyNum, posts } = await fetchAllFloors({ bduss, tid })
 
@@ -84,7 +72,6 @@ export async function fetchThread({ bduss, tid, fetchSubs = true }) {
   }
 }
 
-/** 落盘：JSON + 可读 Markdown */
 export function saveThread(thread, outDir) {
   fs.mkdirSync(outDir, { recursive: true })
   const base = path.join(outDir, String(thread.tid))

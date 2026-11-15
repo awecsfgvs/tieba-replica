@@ -1,14 +1,13 @@
 /**
- * 贴吧 App 接口封装。
+ * 贴吧 App 接口。读接口 /c/f/pb/page 返回结构化 JSON。
  *
- * 读接口 /c/f/pb/page 返回结构化 JSON（楼层 + content 段 + 图片签名 URL），
- * 楼层正文里 content 是分段数组：
- *   { type: 0, text }                普通文字
- *   { type: 2, text, c }             表情（text 为 image_emoticonN，c 为中文名）
+ * content 为分段数组：
+ *   { type: 0, text }                文字
+ *   { type: 2, text, c }             表情（c 为中文名）
  *   { type: 3, big_cdn_src, ... }    图片
- *   { type: 4, text: "@某人", uid }   已解析成提及的 @
+ *   { type: 4, text: "@某人", uid }   提及
  *
- * 签名规则：参数按 key 升序拼成 k=v 连写，末尾接盐 "tiebaclient!!!"，MD5。
+ * 签名：参数按 key 升序拼为 k=v 连写，追加盐 "tiebaclient!!!"，取 MD5。
  */
 import crypto from 'node:crypto'
 import { spawn } from 'node:child_process'
@@ -18,7 +17,6 @@ const APP_UA = 'bdtb for Android 12.60.1.0'
 const APP_VER = '12.60.1.0'
 const SIGN_SALT = 'tiebaclient!!!'
 
-/** 计算 sign：key 升序 → "k1=v1k2=v2..." → 追加盐 → md5 */
 export function sign(params) {
   const raw = Object.keys(params)
     .sort()
@@ -53,7 +51,7 @@ function curlForm(url, form) {
   })
 }
 
-/** 限速器：接口调用之间至少间隔 ms，避免触发风控 */
+// 接口调用限速
 function throttle(ms) {
   let last = 0
   return async () => {
@@ -64,10 +62,6 @@ function throttle(ms) {
 }
 const gate = throttle(1200)
 
-/**
- * 调 App 接口。params 里的 BDUSS 由调用方传入。
- * 会自动补 _client_version、加 sign、走限速。
- */
 export async function appPost(pathname, params) {
   const full = { ...params, _client_version: APP_VER }
   full.sign = sign(full)
@@ -94,10 +88,7 @@ export async function fetchPage({ bduss, tid, pn = 1, rn = 30 }) {
   })
 }
 
-/**
- * 抓整帖所有楼层（自动翻页）。
- * 返回 { title, replyNum, posts: [{ floor, pid, time, author, content[], subPostNumber }] }
- */
+// 单页 rn 上限为 30，需按 pn 翻页
 export async function fetchAllFloors({ bduss, tid, maxPages = 10 }) {
   const posts = []
   let title = ''
@@ -132,14 +123,12 @@ export async function fetchSubPosts({ bduss, tid, pid, pn = 1, rn = 30 }) {
   return (r.subpost_list || []).map((s) => ({
     id: String(s.id),
     time: s.time,
-    // 楼中楼的昵称在 author.name_show，跟老接口的 user 字段不是一回事
     author: s.author?.name_show || s.author?.name || s.nick || s.user || '匿名',
     content: s.content || (s.text ? [{ type: 0, text: s.text }] : []),
     images: s.images || [],
   }))
 }
 
-/** content 段数组 → 纯文本（表情还原成 [中文名]） */
 export function contentToText(content) {
   return (content || [])
     .map((c) => {
@@ -151,7 +140,6 @@ export function contentToText(content) {
     .trim()
 }
 
-/** content 段数组 → 图片 URL 列表（必须用 big_cdn_src，带签名） */
 export function contentImages(content) {
   return (content || [])
     .filter((c) => c.type === 3)
@@ -159,7 +147,6 @@ export function contentImages(content) {
     .filter(Boolean)
 }
 
-/** 时间戳秒 → "YYYY-MM-DD HH:MM:SS" */
 export function fmtTime(ts) {
   if (!ts) return ''
   const d = new Date(Number(ts) * 1000)

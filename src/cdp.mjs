@@ -1,11 +1,5 @@
 /**
- * 极简 CDP 客户端，只依赖 Node 内置 WebSocket（Node 22+）。
- *
- * 用法：
- *   const cdp = await connect(9350)          // 连到已开的 Edge/Chrome 调试端口
- *   await cdp.goto(url)                      // 导航并等待
- *   await cdp.eval('document.title')         // 在页面里求值
- *   cdp.close()
+ * 极简 CDP 客户端，依赖 Node 内置 WebSocket（Node 22+）。
  */
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -32,7 +26,6 @@ export class Cdp {
     })
   }
 
-  /** 页面内求值。出错返回 null，不抛，方便轮询。 */
   async eval(expression) {
     const r = await this.send('Runtime.evaluate', {
       expression,
@@ -43,12 +36,7 @@ export class Cdp {
     return r.result?.result?.value
   }
 
-  /**
-   * 导航。
-   *
-   * 注意：不要在页面里用 location.href= 或 location.reload() 跳转 ——
-   * 那会销毁执行上下文，后续 Runtime.evaluate 会挂住。只能用 Page.navigate。
-   */
+  // 跳转只用 Page.navigate；location.href= 会销毁执行上下文，后续 evaluate 会挂住
   async goto(url, { timeout = 20000, ready } = {}) {
     await this.send('Page.navigate', { url })
     const deadline = Date.now() + timeout
@@ -64,7 +52,6 @@ export class Cdp {
     return false
   }
 
-  /** 等某个条件成立，返回是否等到 */
   async waitFor(expression, { timeout = 20000, interval = 600 } = {}) {
     const deadline = Date.now() + timeout
     while (Date.now() < deadline) {
@@ -88,11 +75,6 @@ export class Cdp {
   }
 }
 
-/**
- * 连到本机已在跑的浏览器调试端口。
- * 启动示例（Windows）：
- *   Start-Process msedge.exe -ArgumentList '--remote-debugging-port=9350','--user-data-dir=<profile>'
- */
 export async function connect(port = 9350, { match = /baidu\.com/ } = {}) {
   const list = await fetch(`http://127.0.0.1:${port}/json/list`).then((r) => r.json())
   const page = list.find((t) => t.type === 'page' && match.test(t.url)) || list.find((t) => t.type === 'page')
