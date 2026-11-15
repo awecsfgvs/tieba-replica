@@ -9,6 +9,7 @@
  *   reply <tid> --text <内容>
  *   nested <tid> --pid <pid> --text <内容>
  *   run --tid <新帖tid> --source <源帖tid> [--gap 20]
+ *   archive <tid> [...] --out <目录>               完整存档
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -21,13 +22,16 @@ import { runReplica, mapFloorPids, loadProgress, saveProgress } from './replica.
 
 const argv = process.argv.slice(2)
 const cmd = argv[0]
-const positionals = argv.slice(1).filter((a) => !a.startsWith('--'))
 const flags = {}
+const positionals = []
 for (let i = 1; i < argv.length; i++) {
-  if (!argv[i].startsWith('--')) continue
-  const k = argv[i].slice(2)
-  const v = argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[++i] : 'true'
-  flags[k] = v
+  if (argv[i].startsWith('--')) {
+    const k = argv[i].slice(2)
+    const v = argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[++i] : 'true'
+    flags[k] = v
+  } else {
+    positionals.push(argv[i])
+  }
 }
 
 const OUT = path.resolve(process.env.TIEBA_OUT_DIR || './out')
@@ -141,9 +145,23 @@ async function main() {
       break
     }
 
+    case 'archive': {
+      // 直接调用同目录模块，不额外起进程
+      const { archiveThreads } = await import('./archive.mjs')
+      const metas = await archiveThreads({
+        bduss: getBduss(),
+        tids: positionals,
+        outRoot: flags.out || path.join(OUT, 'archive'),
+        log,
+      })
+      log(`
+完成 ${metas.length} 个帖子`)
+      break
+    }
+
     default:
       log(`未知命令: ${cmd}`)
-      log('可用: fetch | plan | images | post | reply | nested | run')
+      log('可用: fetch | plan | images | post | reply | nested | run | archive')
       process.exit(1)
   }
 }

@@ -96,6 +96,23 @@ node src/cli.mjs reply <tid> --text '内容'
 node src/cli.mjs nested <tid> --pid <父楼层pid> --text '内容'
 ```
 
+### archive — 完整存档
+
+```bash
+node src/cli.mjs archive <tid> [<tid> ...] --out <目录>
+```
+
+每个帖子产出：
+
+```
+<目录>/<tid>/thread.json   楼层 + 楼中楼 + 图片 URL
+<目录>/<tid>/thread.md     可读全文
+<目录>/<tid>/img/          图片原图
+<目录>/<tid>/meta.json     来源、抓取时间、统计
+```
+
+同时在 `<目录>/index.md` 生成索引。
+
 ## 数据
 
 ### 楼层字段
