@@ -1,0 +1,20 @@
+{
+  "name": "tieba-replica",
+  "version": "1.0.0",
+  "description": "把贴吧一个帖子按原结构搬到另一个帖子：楼层、楼中楼、图片一起搬",
+  "type": "module",
+  "bin": {
+    "tieba-replica": "src/cli.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "fetch": "node src/cli.mjs fetch",
+    "plan": "node src/cli.mjs plan",
+    "images": "node src/cli.mjs images",
+    "run": "node src/cli.mjs run"
+  },
+  "keywords": ["tieba", "baidu", "cdp", "scraper"],
+  "license": "MIT"
+}

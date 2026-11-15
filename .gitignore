@@ -1,0 +1,14 @@
+# 抓下来的内容和图片（含别人的用户名，不进仓库）
+out/
+out_bduss.tmp
+
+# 凭证，永远不要提交
+bduss.txt
+*.bduss
+cookie*.txt
+*.cookie
+
+node_modules/
+.DS_Store
+Thumbs.db
+*.log
