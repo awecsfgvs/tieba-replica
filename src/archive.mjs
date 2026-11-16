@@ -75,13 +75,28 @@ export async function archiveThreads({ bduss, tids, outRoot, log = console.log }
     }
   }
 
-  const lines = ['# 贴吧存档', '', `更新时间：${new Date().toLocaleString('zh-CN')}`, '']
-  lines.push('| tid | 标题 | 楼层 | 楼中楼 | 图片 |', '|---|---|---|---|---|')
-  for (const m of metas) {
-    lines.push(`| [${m.tid}](./${m.tid}/thread.md) | ${m.title} | ${m.floors} | ${m.subPosts} | ${m.imagesDownloaded}/${m.images} |`)
+  // 扫描整个目录，索引累积历史存档
+  const all = []
+  for (const name of fs.readdirSync(outRoot)) {
+    const metaFile = path.join(outRoot, name, 'meta.json')
+    if (!fs.existsSync(metaFile)) continue
+    try {
+      all.push(JSON.parse(fs.readFileSync(metaFile, 'utf8')))
+    } catch {}
   }
-  lines.push('')
-  fs.writeFileSync(path.join(outRoot, 'index.md'), lines.join('\n'), 'utf8')
+  all.sort((a, b) => String(b.archivedAt).localeCompare(String(a.archivedAt)))
+
+  const out = []
+  out.push('# 贴吧存档', '')
+  out.push(`共 ${all.length} 个帖子，更新于 ${new Date().toLocaleString('zh-CN')}`, '')
+  out.push('| tid | 标题 | 楼层 | 楼中楼 | 图片 | 存档时间 |')
+  out.push('|---|---|---|---|---|---|')
+  for (const m of all) {
+    const d = String(m.archivedAt || '').slice(0, 10)
+    out.push(`| [${m.tid}](./${m.tid}/thread.md) | ${m.title} | ${m.floors} | ${m.subPosts} | ${m.imagesDownloaded}/${m.images} | ${d} |`)
+  }
+  out.push('')
+  fs.writeFileSync(path.join(outRoot, 'index.md'), out.join('\n'), 'utf8')
 
   return metas
 }
